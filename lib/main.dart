@@ -1,111 +1,243 @@
+import 'dart:ui' as ui;
+import 'dart:io';
+import 'dart:typed_data';
+import 'package:flutter/gestures.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter/rendering.dart';
+import 'package:simple_permissions/simple_permissions.dart';
 import 'package:flutter/material.dart';
 
 void main() => runApp(MyApp());
 
 class MyApp extends StatelessWidget {
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
+      title: 'Generated App',
       theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // Try running your application with "flutter run". You'll see the
-        // application has a blue toolbar. Then, without quitting the app, try
-        // changing the primarySwatch below to Colors.green and then invoke
-        // "hot reload" (press "r" in the console where you ran "flutter run",
-        // or simply save your changes to "hot reload" in a Flutter IDE).
-        // Notice that the counter didn't reset back to zero; the application
-        // is not restarted.
-        primarySwatch: Colors.blue,
+        primarySwatch: Colors.pink,
+        primaryColor: const Color(0xFFfcd6f6),
+        accentColor: const Color(0xFF97c9c6),
+        canvasColor: const Color(0xFFfdf1be),
       ),
-      home: MyHomePage(title: 'Flutter Demo Home Page'),
+      home: MyImagePage(),
     );
   }
 }
 
-class MyHomePage extends StatefulWidget {
-  MyHomePage({Key key, this.title}) : super(key: key);
-
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
-
-  final String title;
-
+class MyImagePage extends StatefulWidget {
   @override
-  _MyHomePageState createState() => _MyHomePageState();
+  _MyImagePageState createState() => _MyImagePageState();
 }
 
-class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
+class _MyImagePageState extends State<MyImagePage> {
+  File image;
+  GlobalKey _homeStateKey = GlobalKey();
+  List<List<Offset>> strokes = new List<List<Offset>>();
+  MyPainter _painter;
+  ui.Image targetimage;
+  Size mediasize;
+  double _r = 255.0;
+  double _g = 0.0;
+  double _b = 0.0;
 
-  void _incrementCounter() {
-    setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
-    });
+  _MyImagePageState() {
+    requestPermission();
+  }
+
+  void requestPermission() async {
+    await SimplePermissions.requestPermission(Permission.Camera);
+    // await SimplePermissions.requestPermission(Permission.ReadExternalStorage);
+    // await SimplePermissions.requestPermission(Permission.WriteExternalStorage);
+    if (Platform.isAndroid && !await SimplePermissions.checkPermission(Permission.WriteExternalStorage)) {
+      await SimplePermissions.requestPermission(Permission.WriteExternalStorage);
+    } else if (Platform.isIOS && !await SimplePermissions.checkPermission(Permission.PhotoLibrary)) {
+      await SimplePermissions.requestPermission(Permission.PhotoLibrary);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
+    mediasize = MediaQuery.of(context).size;
     return Scaffold(
       appBar: AppBar(
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
-        title: Text(widget.title),
+        title: Text('Canture Image Drawing!'),
       ),
-      body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
-        child: Column(
-          // Column is also a layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
-          //
-          // Invoke "debug painting" (press "p" in the console, choose the
-          // "Toggle Debug Paint" action from the Flutter Inspector in Android
-          // Studio, or the "Toggle Debug Paint" command in Visual Studio Code)
-          // to see the wireframe for each widget.
-          //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal).
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            Text(
-              'You have pushed the button this many times:',
+      body: Listener(
+        child: Container(
+          child: CustomPaint(
+            key: _homeStateKey,
+            painter: _painter,
+            child: ConstrainedBox(
+              constraints: BoxConstraints.expand(),
             ),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.display1,
-            ),
-          ],
+          ),
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: Icon(Icons.add),
-      ), // This trailing comma makes auto-formatting nicer for build methods.
+      floatingActionButton: image == null
+          ? FloatingActionButton(
+              onPressed: getImage,
+              tooltip: 'take a picture!',
+              child: Icon(Icons.add_a_photo),
+            )
+          : FloatingActionButton(
+              onPressed: saveImage,
+              tooltip: 'save Image',
+              child: Icon(Icons.save),
+            ),
+      drawer: Drawer(
+        child: Center(
+          child: Column(
+            children: <Widget>[
+              Padding(
+                padding: EdgeInsets.all(10.0),
+                child: Text('Set Color...'),
+              ),
+              Padding(
+                padding: EdgeInsets.all(10.0),
+                child: Slider(
+                  min: 0.0,
+                  max: 255.0,
+                  value: _r,
+                  onChanged: sliderR,
+                ),
+              ),
+              Padding(
+                padding: EdgeInsets.all(10.0),
+                child: Slider(
+                  min: 0.0,
+                  max: 255.0,
+                  value: _g,
+                  onChanged: sliderG,
+                ),
+              ),
+              Padding(
+                padding: EdgeInsets.all(10.0),
+                child: Slider(
+                  min: 0.0,
+                  max: 255.0,
+                  value: _b,
+                  onChanged: sliderB,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
+  }
+
+  // スライダーの値設定
+  void sliderR(double value) {
+    setState(() => _r = value);
+  }
+
+  void sliderG(double value) {
+    setState(() => _g = value);
+  }
+
+  void sliderB(double value) {
+    setState(() => _b = value);
+  }
+
+  // MyPainterの作成
+  void createMyPainter() {
+    var strokecolor = Color.fromARGB(200, _r.toInt(), _g.toInt(), _b.toInt());
+    _painter = MyPainter(targetimage, image, strokes, mediasize, strokecolor);
+  }
+
+  // カメラ起動、イメージ読み込み
+  void getImage() async {
+    File file = await ImagePicker.pickImage(source: ImageSource.camera);
+    image = file;
+    loadImage(image.path);
+  }
+
+  // イメージ保存
+  void saveImage() {
+    _painter.seveImage();
+    showDialog(
+        context: context,
+        builder: (BuildContext context) => AlertDialog(
+              title: Text("Saved!"),
+              content: Text("Save image to file."),
+            ));
+  }
+
+  // パスからイメージを読み込みui.Imageを作成する
+  void loadImage(path) async {
+    List<int> byts = await image.readAsBytes();
+    Uint8List u8lst = Uint8List.fromList(byts);
+    ui.instantiateImageCodec(u8lst).then((codec) {
+      codec.getNextFrame().then((frameInfo) {
+        targetimage = frameInfo.image;
+        setState(() {
+          createMyPainter();
+        });
+      });
+    });
+  }
+}
+
+class MyPainter extends CustomPainter {
+  File image;
+  ui.Image targetimage;
+  Size mediasize;
+  Color strokecolor;
+  var strokes = new List<List<Offset>>();
+
+  MyPainter(this.targetimage, this.image, this.strokes, this.mediasize,
+      this.strokecolor);
+
+  @override
+  void paint(Canvas canvas, Size size) async {
+    mediasize = size;
+    ui.Image im = await drawToCanvas();
+    canvas.drawImage(im, Offset(0.0, 0.0), Paint());
+  }
+
+  @override
+  bool shouldRepaint(CustomPainter oldDelegate) => true;
+
+  // 描画イメージをファイルに保存
+  void seveImage() async {
+    ui.Image img = await drawToCanvas();
+    final ByteData bytedata =
+        await img.toByteData(format: ui.ImageByteFormat.png);
+    int epoch = new DateTime.now().millisecondsSinceEpoch;
+    final file = new File(image.parent.path + '/' + epoch.toString() + '.png');
+    file.writeAsBytes(bytedata.buffer.asUint8List());
+  }
+
+  // イメージを描画したui.Imageを返す
+  Future<ui.Image> drawToCanvas(){
+    ui.PictureRecorder recorder = ui.PictureRecorder();
+    ui.Canvas canvas = Canvas(recorder);
+
+    Paint p1 = Paint();
+    p1.color = Colors.white;
+    canvas.drawColor(Colors.white, BlendMode.color);
+
+    if (targetimage != null) {
+      Rect r1 = Rect.fromPoints(Offset(0.0, 0.0),
+          Offset(targetimage.width.toDouble(), targetimage.height.toDouble()));
+      Rect r2 = Rect.fromPoints(Offset(0.0, 0.0),
+          Offset(mediasize.width.toDouble(), mediasize.height.toDouble()));
+      canvas.drawImageRect(targetimage, r1, r2, p1);
+    }
+
+    Paint p2 = new Paint();
+    p2.color = strokecolor;
+    p2.style = PaintingStyle.stroke;
+    p2.strokeWidth = 5.0;
+
+    for (var stroke in strokes) {
+      Path strokePath = new Path();
+      strokePath.addPolygon(stroke, false);
+      canvas.drawPath(strokePath, p2);
+    }
+    ui.Picture picture = recorder.endRecording();
+    return picture.toImage(mediasize.width.toInt(), mediasize.height.toInt());
   }
 }

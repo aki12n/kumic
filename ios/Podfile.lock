@@ -1,0 +1,28 @@
+PODS:
+  - Flutter (1.0.0)
+  - image_picker (0.0.1):
+    - Flutter
+  - simple_permissions (0.0.1):
+    - Flutter
+
+DEPENDENCIES:
+  - Flutter (from `.symlinks/flutter/ios`)
+  - image_picker (from `.symlinks/plugins/image_picker/ios`)
+  - simple_permissions (from `.symlinks/plugins/simple_permissions/ios`)
+
+EXTERNAL SOURCES:
+  Flutter:
+    :path: ".symlinks/flutter/ios"
+  image_picker:
+    :path: ".symlinks/plugins/image_picker/ios"
+  simple_permissions:
+    :path: ".symlinks/plugins/simple_permissions/ios"
+
+SPEC CHECKSUMS:
+  Flutter: 0e3d915762c693b495b44d77113d4970485de6ec
+  image_picker: e3eacd46b94694dde7cf2705955cece853aa1a8f
+  simple_permissions: 149cd87a11f83c24bf99f6e8a82f9fc8b70be233
+
+PODFILE CHECKSUM: b94db3a1b69af76d6326200cedb92ca7872ce27c
+
+COCOAPODS: 1.8.4
